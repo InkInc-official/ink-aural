@@ -1,0 +1,75 @@
+{
+  "name": "ink-aural",
+  "version": "1.0.0",
+  "description": "IRIAMコメント読み上げシステム - Ink Inc.",
+  "main": "main.js",
+  "scripts": {
+    "start": "npx electron . --no-sandbox",
+    "build:linux": "electron-builder --linux AppImage",
+    "build:win": "electron-builder --win nsis",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.inkinc.ink-aural",
+    "productName": "Ink Aural",
+    "copyright": "Copyright © 2025 Ink Inc.",
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js",
+      "setup.html",
+      "setup.js",
+      "assets/**/*",
+      "node_modules/**/*",
+      "!python/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "python",
+        "to": "python",
+        "filter": ["**/*"]
+      }
+    ],
+    "asarUnpack": [
+      "assets/**/*"
+    ],
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Utility",
+      "icon": "assets/logo.png",
+      "description": "IRIAM コメント読み上げシステム"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/logo.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerLanguages": ["ja-JP", "en-US"],
+      "language": "1041",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Ink Aural"
+    },
+    "publish": null
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0"
+  }
+}

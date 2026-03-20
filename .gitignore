@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.blockmap
+builder-debug.yml
+builder-effective-config.yaml
+.icon-ico/

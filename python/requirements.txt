@@ -1,0 +1,20 @@
+# Ink Aural – Python依存ライブラリ
+# インストール: pip install -r requirements.txt
+#
+# ──────────────────────────────────────────
+# Ubuntu の場合: pip install -r requirements.txt --break-system-packages
+# Windows の場合: pip install -r requirements.txt
+# ──────────────────────────────────────────
+
+# カメラ映像取得
+opencv-python>=4.8.0
+
+# 日本語OCR
+paddlepaddle>=2.6.0
+paddleocr>=2.7.0
+
+# OS標準TTS読み上げ
+pyttsx3>=2.90
+
+# 絵文字削除
+emoji>=2.8.0

@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ink Aural</title>
+  <style>
+    :root {
+      --bg:        #0a0a0a;
+      --bg2:       #111111;
+      --bg3:       #1a1a1a;
+      --border:    #2a2a2a;
+      --gold:      #c9a84c;
+      --gold-dim:  #7a6430;
+      --text:      #e8e8e8;
+      --text-dim:  #888888;
+      --red:       #e05252;
+      --blue:      #5292e0;
+      --green:     #52c47a;
+      --font-mono: 'Courier New', 'Consolas', monospace;
+      --font-ui:   'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+      --radius:    4px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* ══ Header ══ */
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 16px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      -webkit-app-region: drag;
+      height: 44px;
+    }
+    #logo-btn {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    #logo-icon {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+    #logo-text {
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--gold);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-shadow: 0 0 14px rgba(201,168,76,0.45);
+    }
+    #logo-text span {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: normal;
+      color: var(--gold-dim);
+      letter-spacing: 2px;
+      margin-left: 10px;
+    }
+    #header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+      -webkit-app-region: no-drag;
+    }
+    #status-bar { display: flex; align-items: center; gap: 8px; }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--text-dim); transition: background 0.3s;
+    }
+    .status-dot.reading { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 1.5s infinite; }
+    .status-dot.error   { background: var(--red); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    #status-text { color: var(--text-dim); font-size: 11px; font-family: var(--font-mono); }
+    #version-text { font-family: var(--font-mono); font-size: 9px; color: #444; letter-spacing: 1px; }
+
+    /* ══ Main（リサイズ可能カラム構成） ══ */
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* カラム共通 */
+    .col {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      min-width: 180px;
+    }
+    .col-header {
+      padding: 7px 12px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--gold-dim);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    /* A = コメントログ */
+    #col-a { width: 300px; border-right: none; background: var(--bg); }
+
+    /* B = カメラ */
+    #col-b { flex: 1; background: var(--bg); border-right: none; }
+
+    /* C = サポート */
+    #col-c { width: 300px; background: var(--bg); display: flex; flex-direction: column; }
+
+    /* D = スクショ */
+    #col-d {
+      width: 0; min-width: 0 !important; overflow: hidden;
+      background: var(--bg2);
+      border-left: 1px solid var(--border);
+      transition: width 0.25s ease;
+      flex-shrink: 0;
+    }
+    #col-d.open { width: 260px; }
+
+    /* ── リサイズハンドル ── */
+    .resize-handle {
+      width: 5px;
+      flex-shrink: 0;
+      background: var(--border);
+      cursor: col-resize;
+      position: relative;
+      z-index: 10;
+      transition: background 0.15s;
+    }
+    .resize-handle:hover,
+    .resize-handle.dragging { background: var(--gold-dim); }
+    .resize-handle::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 1px;
+      height: 30px;
+      background: currentColor;
+      opacity: 0.4;
+    }
+
+    /* ── A カラム：コメントログ ── */
+    #comment-log {
+      flex: 1; overflow-y: auto; padding: 8px;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    #comment-log::-webkit-scrollbar { width: 4px; }
+    #comment-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .comment-item {
+      padding: 5px 8px; border-radius: var(--radius);
+      font-size: 12px; line-height: 1.5;
+      border-left: 2px solid transparent;
+      animation: slideIn 0.2s ease;
+    }
+    @keyframes slideIn { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:none} }
+    .comment-item.normal { border-left-color: var(--border); }
+    .comment-item.gift   { border-left-color: var(--red);  background: rgba(224,82,82,0.07); }
+    .comment-item.badge  { border-left-color: var(--blue); background: rgba(82,146,224,0.07); }
+    .comment-item.kiri   { border-left-color: var(--gold); background: rgba(201,168,76,0.07); }
+    .comment-item.reading { background: rgba(201,168,76,0.12); }
+    .comment-time { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-right: 6px; }
+
+
+    /* ── B カラム：カメラ ── */
+    #camera-container { flex: 1; position: relative; background: #050505; overflow: hidden; }
+    #camera-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #camera-canvas { display: none; }
+    #no-camera {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      color: var(--text-dim); font-family: var(--font-mono); font-size: 11px;
+    }
+    #no-camera.hidden { display: none; }
+    #guide-box {
+      position: absolute;
+      border: 2px solid var(--gold);
+      box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+      cursor: move;
+      left: 15%; top: 60%; width: 70%; height: 30%;
+      pointer-events: all;
+    }
+    #guide-box::before {
+      content: 'コメント欄をここに合わせる';
+      position: absolute; top: -22px; left: 0;
+      font-size: 10px; color: var(--gold); white-space: nowrap;
+      font-family: var(--font-mono); letter-spacing: 1px;
+    }
+    #guide-resize {
+      position: absolute; right: -6px; bottom: -6px;
+      width: 14px; height: 14px; background: var(--gold); cursor: se-resize;
+    }
+    #col-b-controls {
+      flex-shrink: 0; padding: 10px 14px; background: var(--bg2);
+      border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px;
+    }
+    #camera-select-row { display: flex; gap: 6px; align-items: center; }
+
+    select {
+      flex: 1; background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); padding: 5px 8px; border-radius: var(--radius);
+      font-size: 12px; font-family: var(--font-ui); cursor: pointer; outline: none;
+    }
+    select:focus { border-color: var(--gold-dim); }
+
+    .btn-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .btn-group {
+      display: flex; gap: 4px; align-items: center;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 2px; background: var(--bg3);
+    }
+    .btn-group-label {
+      font-family: var(--font-mono); font-size: 9px;
+      color: var(--text-dim); padding: 0 6px; letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    button {
+      border: 1px solid var(--border); background: var(--bg3); color: var(--text);
+      padding: 6px 10px; border-radius: var(--radius); cursor: pointer;
+      font-size: 12px; font-family: var(--font-ui); white-space: nowrap;
+      transition: all 0.15s; outline: none;
+    }
+    button:hover { border-color: var(--gold-dim); color: var(--gold); }
+    button:active { background: var(--bg); }
+    button.primary { background: var(--gold); color: #000; border-color: var(--gold); font-weight: bold; }
+    button.primary:hover { background: #e0ba60; }
+    button.danger { border-color: var(--red); color: var(--red); }
+    button.danger:hover { background: rgba(224,82,82,0.1); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    /* グループ内ボタンはborderなし */
+    .btn-group button { border: none; background: none; padding: 5px 9px; color: var(--text); }
+    .btn-group button:hover { background: var(--bg2); border: none; color: var(--gold); }
+    /* 読み上げ開始ボタン */
+    #btn-start { border-color: var(--gold-dim); color: var(--gold); font-weight: bold; }
+    #btn-start:not(:disabled):hover { background: var(--gold); color: #000; }
+    #btn-rec-start { border-color: var(--gold-dim); color: var(--gold); }
+    /* 起動中バッジ */
+    .active-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 8px; border-radius: 10px; font-size: 10px;
+      font-family: var(--font-mono); letter-spacing: 1px;
+    }
+    .active-badge.reading { background: rgba(82,196,122,0.15); color: var(--green); border: 1px solid var(--green); animation: pulse 1.5s infinite; }
+    .active-badge.recording { background: rgba(224,82,82,0.15); color: var(--red); border: 1px solid var(--red); animation: pulse 1.5s infinite; }
+    #activity-bar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-height: 22px; }
+    /* スクショモーダル */
+    #screenshot-modal {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.85);
+      align-items: center; justify-content: center;
+    }
+    #screenshot-modal.open { display: flex; }
+    #screenshot-modal-inner {
+      position: relative; max-width: 90vw; max-height: 90vh;
+      display: flex; flex-direction: column; gap: 10px; align-items: center;
+    }
+    #screenshot-modal img {
+      max-width: 80vw; max-height: 78vh;
+      border: 2px solid var(--gold-dim); border-radius: var(--radius);
+      object-fit: contain; cursor: zoom-out;
+    }
+    #screenshot-modal-close {
+      position: absolute; top: -14px; right: -14px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--bg2); border: 1px solid var(--border);
+      color: var(--text); font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #screenshot-modal-close:hover { border-color: var(--red); color: var(--red); }
+
+    #speed-row { display: flex; align-items: center; gap: 8px; }
+    #speed-row label { color: var(--text-dim); font-size: 11px; white-space: nowrap; }
+    input[type=range] { flex: 1; accent-color: var(--gold); cursor: pointer; }
+
+    /* ── C カラム：サポート ── */
+    #col-c-scroll {
+      flex: 1; overflow-y: auto; padding: 12px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    #col-c-scroll::-webkit-scrollbar { width: 3px; }
+    #col-c-scroll::-webkit-scrollbar-thumb { background: var(--border); }
+    .c-section-title {
+      font-family: var(--font-mono); font-size: 10px;
+      color: var(--gold-dim); letter-spacing: 2px; margin-bottom: 7px;
+    }
+
+    /* X投稿ボタン */
+    #x-post-section { display: flex; flex-direction: column; gap: 6px; }
+    #btn-open-x {
+      width: 100%; padding: 10px; font-size: 18px; font-weight: bold;
+      letter-spacing: 1px; border-color: #555;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    #btn-open-x:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* スクショインラインプレビュー */
+    #screenshot-inline {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    #screenshot-inline.visible { display: flex; }
+    #screenshot-inline img {
+      width: 100%;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      object-fit: contain;
+      max-height: 200px;
+    }
+    #screenshot-notice {
+      font-size: 10px; color: var(--text-dim);
+      border: 1px solid var(--gold-dim); border-radius: var(--radius);
+      padding: 5px 7px; line-height: 1.5;
+    }
+    #screenshot-inline .btn-row { gap: 5px; }
+    #screenshot-inline button { flex: 1; font-size: 11px; padding: 5px 6px; }
+
+    /* メモ */
+    #memo-section { display: flex; flex-direction: column; gap: 6px; }
+    #memo-area {
+      width: 100%; background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); padding: 8px; border-radius: var(--radius);
+      font-size: 12px; font-family: var(--font-ui); resize: none; height: 80px; outline: none; line-height: 1.6;
+    }
+    #memo-area:focus { border-color: var(--gold-dim); }
+    #memo-save-row { display: flex; gap: 5px; align-items: center; }
+    #memo-title-input {
+      flex: 1; background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); padding: 5px 8px; border-radius: var(--radius);
+      font-size: 12px; outline: none;
+    }
+    #memo-title-input:focus { border-color: var(--gold-dim); }
+    #memo-list { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+    .memo-item {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 8px; background: var(--bg3);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 12px; cursor: pointer; transition: border-color 0.15s;
+    }
+    .memo-item:hover { border-color: var(--gold-dim); }
+    .memo-item.active { border-color: var(--gold); background: rgba(201,168,76,0.07); }
+    .memo-item-title { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .memo-item-date { font-family: var(--font-mono); font-size: 9px; color: var(--text-dim); }
+    .memo-del { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 0 2px; font-size: 13px; flex-shrink: 0; }
+    .memo-del:hover { color: var(--red); }
+
+    /* 話題ストック */
+    #topic-list { display: flex; flex-direction: column; gap: 3px; margin-bottom: 7px; }
+    .topic-item {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 8px; background: var(--bg3);
+      border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px;
+    }
+    .topic-item span { flex: 1; }
+    .topic-del { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 0; font-size: 13px; }
+    .topic-del:hover { color: var(--red); }
+    #topic-add-row { display: flex; gap: 4px; }
+    #topic-input {
+      flex: 1; background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); padding: 5px 8px; border-radius: var(--radius); font-size: 12px; outline: none;
+    }
+    #topic-input:focus { border-color: var(--gold-dim); }
+
+    /* Ink Memory Liteリンク */
+    .link-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 9px; background: var(--bg3);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text-dim); font-size: 11px; cursor: pointer;
+      text-decoration: none; transition: all 0.15s; width: 100%; text-align: left;
+    }
+    .link-btn:hover { border-color: var(--gold-dim); color: var(--gold); }
+    .link-btn.highlight { border-color: var(--gold-dim); color: var(--gold-dim); }
+    .link-btn.highlight:hover { border-color: var(--gold); color: var(--gold); }
+    .link-icon { font-size: 12px; flex-shrink: 0; }
+
+    /* Ink Inc. バナー */
+    #inkinc-banner {
+      flex-shrink: 0; margin: 10px 12px 0;
+      background: #0d0d0d; border: 1px solid #2a2218;
+      border-radius: 6px; padding: 11px 13px;
+    }
+    #inkinc-banner-label {
+      font-family: var(--font-mono); font-size: 9px;
+      color: var(--gold-dim); letter-spacing: 2px; margin-bottom: 5px;
+    }
+    #inkinc-banner-body {
+      font-size: 11px; color: #888; line-height: 1.6; margin-bottom: 8px;
+    }
+    #inkinc-banner-link {
+      display: inline-block; font-size: 11px; font-weight: 600;
+      color: var(--gold); text-decoration: none; cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    #inkinc-banner-link:hover { opacity: 0.75; }
+
+    /* リンク集（下部固定） */
+    #col-c-links {
+      flex-shrink: 0; border-top: 1px solid var(--border);
+      padding: 10px 12px; background: var(--bg2);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .links-title {
+      font-family: var(--font-mono); font-size: 9px;
+      color: var(--gold-dim); letter-spacing: 2px; margin-bottom: 4px;
+    }
+
+    /* D カラム：スクショ（非表示、インライン表示に移行） */
+    #col-d-inner { width: 260px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    #d-btn-row { display: flex; flex-direction: column; gap: 6px; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: var(--bg2); border: 1px solid var(--gold-dim);
+      color: var(--text); padding: 8px 20px; border-radius: var(--radius);
+      font-size: 12px; font-family: var(--font-mono);
+      transition: transform 0.25s ease, opacity 0.25s;
+      opacity: 0; pointer-events: none; z-index: 100;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- ══ Header ══ -->
+<div id="header">
+  <button id="logo-btn" title="Ink Inc. 公式HPへ">
+    <img id="logo-icon" src="assets/logo.png" alt="Ink Aural" />
+    <div id="logo-text">Ink Aural<span>by Ink Inc.</span></div>
+  </button>
+  <div id="header-right">
+    <div id="status-bar">
+      <div class="status-dot" id="status-dot"></div>
+      <div id="status-text">STANDBY</div>
+    </div>
+    <div id="version-text">v0.0.2</div>
+  </div>
+</div>
+
+<!-- ══ Main ══ -->
+<div id="main">
+
+  <!-- A：コメントログ -->
+  <div class="col" id="col-a">
+    <div class="col-header">COMMENT LOG</div>
+    <div id="comment-log">
+      <div style="color:var(--text-dim);font-family:var(--font-mono);font-size:11px;padding:16px;text-align:center;line-height:2.2">
+        読み上げ開始待機中...
+      </div>
+    </div>
+
+  </div>
+
+  <div class="resize-handle" id="handle-ab"></div>
+
+  <!-- B：カメラキャプチャ -->
+  <div class="col" id="col-b">
+    <div class="col-header">CAMERA / CAPTURE</div>
+    <div id="camera-container">
+      <video id="camera-video" autoplay muted playsinline></video>
+      <canvas id="camera-canvas"></canvas>
+      <div id="no-camera">
+        <div style="font-size:32px;">📷</div>
+        <div>USBカメラが選択されていません</div>
+        <div style="color:#555;margin-top:4px">下のメニューから選択してください</div>
+      </div>
+      <div id="guide-box"><div id="guide-resize"></div></div>
+    </div>
+    <div id="col-b-controls">
+      <div id="camera-select-row">
+        <select id="camera-select"><option value="">-- USBカメラを選択 --</option></select>
+        <button id="btn-refresh-cam" title="カメラ一覧を更新">↺</button>
+        <select id="audio-out-select" style="flex:0.8">
+          <option value="default">デフォルト出力</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <!-- 読み上げグループ -->
+        <div class="btn-group">
+          <span class="btn-group-label">読み上げ</span>
+          <button id="btn-start" disabled>▶ 開始</button>
+          <button id="btn-stop" disabled>■ 停止</button>
+        </div>
+        <!-- 録画グループ -->
+        <div class="btn-group">
+          <span class="btn-group-label">画面録画</span>
+          <button id="btn-rec-start" disabled>⏺ 開始</button>
+          <button id="btn-rec-stop" disabled>⏹ 停止</button>
+        </div>
+        <button id="btn-screenshot" disabled>📸 スクショ</button>
+      </div>
+      <div id="activity-bar"></div>
+      <div id="speed-row">
+        <label>読み上げ速度</label>
+        <input type="range" id="speed-slider" min="50" max="300" value="100" step="10">
+        <span id="speed-val" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);min-width:38px">100%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="resize-handle" id="handle-bc"></div>
+
+  <!-- C：サポートツール -->
+  <div class="col" id="col-c">
+    <div class="col-header">SUPPORT</div>
+    <div id="col-c-scroll">
+
+      <!-- X投稿 -->
+      <div id="x-post-section">
+        <div class="c-section-title">POST</div>
+        <button id="btn-open-x">𝕏</button>
+
+        <!-- スクショインラインプレビュー -->
+        <div id="screenshot-inline">
+          <img id="screenshot-preview-inline" src="" alt="スクショプレビュー" style="cursor:zoom-in" />
+          <div id="screenshot-notice">
+            ⚠ リスナーのコメントが含まれる場合があります。投稿前に内容をご確認ください。
+          </div>
+          <div class="btn-row">
+            <button id="btn-d-save" class="primary">💾 保存</button>
+            <button id="btn-d-post">𝕏 投稿へ</button>
+            <button id="btn-d-close" class="danger">🗑 削除</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- メモ -->
+      <div id="memo-section">
+        <div class="c-section-title">📝 MEMO</div>
+        <textarea id="memo-area" placeholder="配信メモ...&#10;Ctrl+S で保存"></textarea>
+        <div id="memo-save-row">
+          <input type="text" id="memo-title-input" placeholder="タイトルを入力して保存">
+          <button id="memo-save">💾</button>
+        </div>
+        <div id="memo-list"></div>
+        <div style="margin-top:6px">
+          <a class="link-btn highlight" data-url="https://ink-memory-lite-app.streamlit.app/">
+            <span class="link-icon">🧠</span>Ink Memory Lite を開く
+          </a>
+        </div>
+      </div>
+
+      <!-- 話題ストック -->
+      <div>
+        <div class="c-section-title">💬 話題ストック</div>
+        <div id="topic-list"></div>
+        <div id="topic-add-row">
+          <input type="text" id="topic-input" placeholder="話題を追加...">
+          <button id="btn-topic-add">＋</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Ink Inc. バナー -->
+    <div id="inkinc-banner">
+      <div id="inkinc-banner-label">MADE BY INK INC.</div>
+      <div id="inkinc-banner-body">
+        ライバー事務所が開発した<br>スマホ配信者向けツール
+      </div>
+      <a id="inkinc-banner-link" data-url="https://inkinc-hp.vercel.app/">Ink Inc. を見る →</a>
+    </div>
+
+    <!-- リンク集（下部固定） -->
+    <div id="col-c-links">
+      <div class="links-title">🔗 LINKS</div>
+      <a class="link-btn" data-url="https://inkinc-hp.vercel.app/">
+        <span class="link-icon">🏠</span>Ink Inc. 公式HP
+      </a>
+      <a class="link-btn" data-url="https://x.com/InkInc_Info">
+        <span class="link-icon">𝕏</span>公式アカウント
+      </a>
+      <a class="link-btn" data-url="https://inkinc-hp.vercel.app/tools">
+        <span class="link-icon">🛠</span>Ink Tools
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- スクショ拡大モーダル -->
+<div id="screenshot-modal">
+  <div id="screenshot-modal-inner">
+    <button id="screenshot-modal-close">×</button>
+    <img id="screenshot-modal-img" src="" alt="スクショ拡大" />
+  </div>
+</div>
+
+<script src="renderer.js"></script>
+</body>
+</html>
