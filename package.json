@@ -1,6 +1,6 @@
 {
   "name": "ink-aural",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "IRIAMコメント読み上げシステム - Ink Inc.",
   "main": "main.js",
   "scripts": {
