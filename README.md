@@ -206,3 +206,7 @@ Copyright (c) 2025 黒井葉跡 / Ink Inc.
 
 - X（公式）: [@InkInc_Info](https://x.com/InkInc_Info)
 - Ink Inc. 公式HP: [https://inkinc-hp.vercel.app/](https://inkinc-hp.vercel.app/)
+
+---
+
+Created by **Ink Inc.** / 黒井葉跡 (Kuroi Haato) — https://inkinc-hp.pages.dev/
