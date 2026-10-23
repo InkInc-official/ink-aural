@@ -28,7 +28,9 @@
       {
         "from": "python",
         "to": "python",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "asarUnpack": [
@@ -38,7 +40,9 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "Utility",
@@ -49,7 +53,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/logo.png"
@@ -57,7 +63,10 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerLanguages": ["ja-JP", "en-US"],
+      "installerLanguages": [
+        "ja-JP",
+        "en-US"
+      ],
       "language": "1041",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
@@ -66,7 +75,7 @@
     "publish": null
   },
   "devDependencies": {
-    "electron": "^28.0.0",
+    "electron": "^45.0.0",
     "electron-builder": "^24.0.0"
   },
   "dependencies": {
